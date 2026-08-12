@@ -9,3 +9,4 @@ data/processed/*
 models/*.pt
 models/*.h5
 results/
+.ipynb_checkpoints/
