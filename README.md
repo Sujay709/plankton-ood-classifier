@@ -1,25 +1,24 @@
 # Plankton Classifier with Out-of-Distribution Detection
 
 A convolutional neural network for classifying plankton imagery, extended with
-an out-of-distribution (OOD) detection layer that flags organisms which do not
-confidently match any known class, rather than forcing them into the nearest
+an out-of-distribution (OOD) detection layer that flags organisms which don't
+confidently match any known class, instead of forcing them into the nearest
 known category.
 
 ## Motivation
 
 Standard plankton classification models assume every image belongs to one of
-a fixed set of trained classes. In practice, imaging datasets — particularly
-those collected in situ — regularly contain rare, ambiguous, or previously
-undescribed organisms. Treating every image as forced-choice classification
-risks silently mislabeling these cases. This project instead treats "does not
-match a known class" as a valid and useful output, with the goal of supporting
-applications such as biodiversity monitoring where flagging anomalies is often
-more scientifically valuable than assigning an incorrect label.
+a fixed set of trained classes. In practice, imaging datasets, especially ones
+collected in situ, regularly contain rare, ambiguous, or previously undescribed
+organisms. Forcing every image into the nearest known class risks silently
+mislabeling these cases. This project treats "doesn't match a known class" as
+a valid output in its own right.
 
-## Approach
+## Planned Approach
 
-- Baseline CNN trained for multi-class plankton classification
-- OOD scoring layer to identify likely novel or unknown organisms
+- Baseline CNN (ResNet18 transfer learning) for multi-class plankton classification
+- OOD scoring layer (max softmax probability baseline, possibly Mahalanobis distance)
+  to identify likely novel or unknown organisms
 - Evaluation on both held-out known classes and held-out "unknown" classes to
   assess detection performance
 
@@ -42,6 +41,10 @@ Coastal Observatory (MVCO), Woods Hole Oceanographic Institution.
 - 2013 subset: https://hdl.handle.net/1912/7349
 - 2014 subset: https://hdl.handle.net/1912/7350
 
+Initial exploration (`notebooks/01_eda.ipynb`) found 103 annotated classes with
+substantial class imbalance and images that are grayscale, variably sized, and
+low signal-to-noise. These findings shape the preprocessing and training design.
+
 **Citation:**
 
 > Sosik, H. M., Peacock, E. E., and Brownlee, E. F. (2015). Annotated Plankton
@@ -60,5 +63,5 @@ Coastal Observatory (MVCO), Woods Hole Oceanographic Institution.
 
 ## Status
 
-In development. Data pipeline is in place; classification and OOD detection
-components are in progress.
+Early development. Data exploration is done. Classification model and OOD
+detection aren't built yet.
