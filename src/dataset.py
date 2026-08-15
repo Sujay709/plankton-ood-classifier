@@ -2,15 +2,17 @@ from pathlib import Path
 from PIL import Image
 
 
-DATA_DIR = Path('data/raw/2013')
+DATA_DIR = Path('data/raw')
 
 def get_class_counts(data_dir):
   """Count images per class folder under data_dir."""
   class_counts = {}
-  for class_folder in data_dir.iterdir():
-    if class_folder.is_dir():
-      count = len(list(class_folder.glob('*.png')))
-      class_counts[class_folder.name] = count
+  for year in ["2013", "2014"]:
+    year_path = data_dir / year
+    for class_folder in year_path.iterdir():
+      if class_folder.is_dir():
+        count = len(list(class_folder.glob('*.png')))
+        class_counts[class_folder.name] = class_counts.get(class_folder.name, 0) + count
   return class_counts
 
 def filter_dataset(class_counts):
