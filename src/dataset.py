@@ -1,6 +1,7 @@
 from pathlib import Path
-from PIL import Image
 
+from PIL import Image
+from sklearn.model_selection import train_test_split
 
 DATA_DIR = Path('data/raw')
 
@@ -41,6 +42,24 @@ def get_class_to_idx(known_classes):
     class_to_idx[class_name] = idx
   
   return class_to_idx
+
+def split_dataset(dataset, test_size=0.2, random_state=42):
+  """
+  Split dataset indices into stratified train/test sets.
+
+  Args:
+    dataset: A PlanktonDataset instance.
+    test_size: Fraction of data to reserve for testing.
+    random_state: Seed for reproducibility.
+
+  Returns:
+    (train_indices, test_indices), two lists of ints.
+  """
+  all_indices = list(range(len(dataset)))
+  labels = [label_idx for image_path, label_idx in dataset.samples]
+  train_indices, test_indices = train_test_split(all_indices, test_size=test_size, random_state=random_state, stratify=labels)
+
+  return train_indices, test_indices
 
 class PlanktonDataset:
   def __init__(self, root_dir, class_to_idx, transform=None):
@@ -105,3 +124,5 @@ if __name__ == '__main__':
     image, label = dataset[i]
     path, stored_label = dataset.samples[i]
     print(f"idx={i} | mode={image.mode} | size={image.size} | label={label} | path={path}")
+  train_indices, test_indices = split_dataset(dataset)
+  print(f"train size: {len(train_indices)}, test size: {len(test_indices)}")
