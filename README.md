@@ -61,7 +61,7 @@ low signal-to-noise. These findings shape the preprocessing and training design.
 }
 ```
 
+
 ## Status
 
-Early development. Data exploration is done. Classification model and OOD
-detection aren't built yet.
+Mid development. Dataset and train.py done. Evaluate.py in progress.
