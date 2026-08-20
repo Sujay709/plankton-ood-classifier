@@ -5,6 +5,9 @@ from sklearn.model_selection import train_test_split
 
 DATA_DIR = Path('data/raw')
 
+OOD_CLASSES = {'Euglena', 'Dictyocha', 'Thalassionema', 'Ditylum', 'Pyramimonas_longicauda',
+'Proterythropsis_sp', 'Chaetoceros_pennate', 'Tontonia_gracillima', 'Guinardia_striata'}
+
 def get_class_counts(data_dir):
   """Count images per class folder under data_dir."""
   class_counts = {}
@@ -28,8 +31,6 @@ def filter_dataset(class_counts):
 
   MIN_CLASS_COUNT = 50
   JUNK_CLASSES =  {'mix', 'detritus', 'bad', 'other_interaction'}
-  OOD_CLASSES = {'Euglena', 'Dictyocha', 'Thalassionema', 'Ditylum', 'Pyramimonas_longicauda',
-  'Proterythropsis_sp', 'Chaetoceros_pennate', 'Tontonia_gracillima', 'Guinardia_striata'}
 
   known_classes = [class_name for class_name, count in  class_counts.items() if count >= MIN_CLASS_COUNT and class_name not in JUNK_CLASSES and class_name not in OOD_CLASSES]
 
