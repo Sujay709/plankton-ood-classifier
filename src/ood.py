@@ -42,6 +42,34 @@ def get_msp_confidences(model, loader, device):
 
   return confidences
 
+def get_features(model, loader, device):
+  features_storage = []
+  def hook_fn(module, input, output):
+    features_storage.clear()
+    features_storage.append(output)
+
+  handle = model.avgpool.register_forward_hook(hook_fn)
+  model.eval()
+
+  all_features = []
+  all_labels = []
+  with torch.no_grad():
+    for images, labels in loader:
+      images = images.to(device)
+      model(images)
+      batch_features = features_storage[0].flatten(1)
+      batch_features = batch_features.cpu()
+      labels = labels.cpu()
+
+      all_features.append(batch_features)
+      all_labels.append(labels)
+  handle.remove()
+
+  features = torch.cat(all_features, dim=0)
+  labels = torch.cat(all_labels, dim=0)
+
+  return features,labels
+
 if __name__ == '__main__':
   ood_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=ood_class_to_idx, transform=transform)
   ood_loader = DataLoader(ood_dataset, batch_size=32, shuffle=False, num_workers=4)
@@ -63,9 +91,13 @@ if __name__ == '__main__':
   known_class_to_idx = get_class_to_idx(known_classes)
 
   known_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=known_class_to_idx, transform=transform)
-  _, known_test_indices = split_dataset(known_dataset)
+  known_train_indices, known_test_indices = split_dataset(known_dataset)
+  known_train_dataset = Subset(known_dataset, known_train_indices)
+  known_train_loader = DataLoader(known_train_dataset, batch_size=32, shuffle=False, num_workers=4)
   known_test_dataset = Subset(known_dataset, known_test_indices)
   known_test_loader = DataLoader(known_test_dataset, batch_size=32, shuffle=False, num_workers=4)
+
+  train_features, train_labels = get_features(model, known_train_loader, device)
 
   ood_confidences = get_msp_confidences(model, ood_loader, device)
 
@@ -82,3 +114,6 @@ if __name__ == '__main__':
 
   print(f"OOD images correctly flagged as novel: {ood_flagged:.4f}")
   print(f"Known images wrongly flagged as novel (false positive rate): {known_flagged:.4f}")
+  
+
+
