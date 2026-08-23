@@ -70,6 +70,30 @@ def get_features(model, loader, device):
 
   return features,labels
 
+
+def get_class_means(features, labels, num_classes):
+  class_means = []
+  for i in range(num_classes):
+    mask = labels == i
+    class_mean = features[mask].mean(dim=0)
+    class_means.append(class_mean)
+  return torch.stack(class_means)
+
+def get_shared_covariance(features, labels, class_means, num_classes):
+  all_deviations = []
+  for i in range(num_classes):
+    mask = labels == i
+    deviations = features[mask] - class_means[i]
+    all_deviations.append(deviations)
+  combined_total_deviations = torch.cat(all_deviations, dim=0)
+  swapped_dim_deviations = combined_total_deviations.T
+  covariance_matrix = torch.cov(swapped_dim_deviations)
+
+  return covariance_matrix
+
+
+
+
 if __name__ == '__main__':
   ood_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=ood_class_to_idx, transform=transform)
   ood_loader = DataLoader(ood_dataset, batch_size=32, shuffle=False, num_workers=4)
