@@ -43,6 +43,16 @@ def get_msp_confidences(model, loader, device):
   return confidences
 
 def get_features(model, loader, device):
+  """
+  Run every image in loader through the model and grab the 512-dim feature
+  vector each one produces right before the final classification layer.
+
+  Uses a forward hook on avgpool to snatch those features mid-pass, since
+  the model normally throws them away after turning them into class scores.
+
+  Returns all the feature vectors stacked together, plus their true labels,
+  so you can later compute things like class means and covariance.
+  """
   features_storage = []
   def hook_fn(module, input, output):
     features_storage.clear()
@@ -72,6 +82,14 @@ def get_features(model, loader, device):
 
 
 def get_class_means(features, labels, num_classes):
+  """
+  Work out the average feature vector for each class.
+
+  For every class, grab all the feature vectors that belong to it and
+  average them together. This gives you one 512-dim vector per class,
+  basically a summary of what a typical image in that class looks like
+  in feature space.
+  """
   class_means = []
   for i in range(num_classes):
     mask = labels == i
@@ -80,6 +98,19 @@ def get_class_means(features, labels, num_classes):
   return torch.stack(class_means)
 
 def get_shared_covariance(features, labels, class_means, num_classes):
+  """
+  Figure out how features naturally vary and correlate with each other,
+  pooling that info across all classes into one shared covariance matrix.
+
+  For each class, subtract that class's mean from its own feature vectors
+  to get pure deviations (how far each image strays from its own class's
+  average). Stack all classes' deviations together, then compute the
+  covariance across the whole pooled set.
+
+  This shared covariance is what Mahalanobis distance uses later to figure
+  out which directions in feature space are normal wobble vs which
+  ones are actually suspicious.
+  """
   all_deviations = []
   for i in range(num_classes):
     mask = labels == i
@@ -91,8 +122,31 @@ def get_shared_covariance(features, labels, class_means, num_classes):
 
   return covariance_matrix
 
+def mahalanobis_distance(features, class_means, covariance):
+  """
+  Work out how far each image sits from every class mean, using
+  Mahalanobis distance instead of plain Euclidean distance.
 
+  The covariance matrix gets a tiny value added to its diagonal first,
+  just so it's guaranteed to be invertible. Its inverse is what lets us
+  properly reweight each feature dimension: directions that naturally
+  wobble a lot count for less, and directions that are normally stable
+  count for more, so a deviation only looks "suspicious" if it's
+  unusual relative to how that feature normally behaves.
 
+  Returns a distance for every image against every class, so for N
+  images and 46 classes you get back an (N, 46) grid of distances.
+  """
+  covariance_regularized = covariance + (1e-6 * torch.eye(512))
+  cov_inv = torch.linalg.inv(covariance_regularized)
+  features_unsq = features.unsqueeze(1)
+  class_means_unsq = class_means.unsqueeze(0)
+  deviations = features_unsq-class_means_unsq
+  
+  transformed_deviations = torch.einsum('ik,nck->nci', cov_inv, deviations)
+  distance = torch.sqrt(torch.einsum('nci, nci->nc', transformed_deviations, deviations))
+
+  return distance
 
 if __name__ == '__main__':
   ood_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=ood_class_to_idx, transform=transform)
@@ -123,6 +177,29 @@ if __name__ == '__main__':
 
   train_features, train_labels = get_features(model, known_train_loader, device)
 
+  test_features, test_labels = get_features(model, known_test_loader, device)
+  ood_features, ood_labels = get_features(model, ood_loader, device)
+
+  class_means = get_class_means(train_features, train_labels, num_classes)
+  covariance = get_shared_covariance(train_features, train_labels, class_means, num_classes)
+  test_distances = mahalanobis_distance(test_features, class_means, covariance)
+  ood_distances = mahalanobis_distance(ood_features, class_means, covariance)
+
+  test_min_distances, _ = test_distances.min(dim=1)
+  ood_min_distances, _ = ood_distances.min(dim=1)
+
+  print(f"Average known-class test distance: {test_min_distances.mean().item():.4f}")
+  print(f"Average OOD distance: {ood_min_distances.mean().item():.4f}")
+
+  mahalanobis_threshold = np.percentile(test_min_distances.tolist(), 95)
+  
+  mahalanobis_ood_flagged = sum(1 for c in ood_min_distances if c > mahalanobis_threshold) / len(ood_min_distances)
+  mahalanobis_known_flagged = sum(1 for c in test_min_distances if c > mahalanobis_threshold) / len(test_min_distances)
+
+  print(f"Threshold (95th percentile of known distances): {mahalanobis_threshold:.4f}")
+  print(f"OOD images correctly flagged as novel: {mahalanobis_ood_flagged:.4f}")
+  print(f"Known images wrongly flagged as novel (false positive rate): {mahalanobis_known_flagged:.4f}")
+  
   ood_confidences = get_msp_confidences(model, ood_loader, device)
 
   print(f"Number of OOD confidence values collected: {len(ood_confidences)}")
@@ -131,10 +208,10 @@ if __name__ == '__main__':
   known_confidences = get_msp_confidences(model, known_test_loader, device)
   print(f"Average known-class test confidence: {sum(known_confidences) / len(known_confidences):.4f}")
 
-  threshold = np.percentile(known_confidences, 5)
-  print(f"Threshold (5th percentile of known confidences): {threshold:.4f}")
-  ood_flagged = sum(1 for c in ood_confidences if c < threshold) / len(ood_confidences)
-  known_flagged = sum(1 for c in known_confidences if c < threshold) / len(known_confidences)
+  msp_threshold = np.percentile(known_confidences, 5)
+  print(f"Threshold (5th percentile of known confidences): {msp_threshold:.4f}")
+  ood_flagged = sum(1 for c in ood_confidences if c < msp_threshold) / len(ood_confidences)
+  known_flagged = sum(1 for c in known_confidences if c < msp_threshold) / len(known_confidences)
 
   print(f"OOD images correctly flagged as novel: {ood_flagged:.4f}")
   print(f"Known images wrongly flagged as novel (false positive rate): {known_flagged:.4f}")
