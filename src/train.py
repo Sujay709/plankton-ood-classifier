@@ -6,9 +6,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import torchvision.transforms as transforms
-import torchvision.models as models
 
 from dataset import get_class_counts, filter_dataset, get_class_to_idx, PlanktonDataset
+from model import build_model
 
 DATA_DIR = Path("data/raw")
 
@@ -26,11 +26,8 @@ if __name__ == '__main__':
   train_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=class_to_idx, transform=transform)
   train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
 
-  model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-
   num_classes = len(class_to_idx)
-  in_features = model.fc.in_features
-  model.fc = nn.Linear(in_features, num_classes)
+  model = build_model(num_classes)
 
   for name, param in model.named_parameters():
     if not name.startswith('fc'):
