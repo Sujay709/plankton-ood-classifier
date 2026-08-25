@@ -1,14 +1,12 @@
 from pathlib import Path
 import numpy as np
 import torch
-import torch.nn as nn
+import json
 import torchvision.transforms as transforms
-import torchvision.models as models
 from torch.utils.data import DataLoader
-from torch.utils.data import DataLoader, Subset
-
-from dataset import get_class_to_idx, PlanktonDataset, OOD_CLASSES
+from torch.utils.data import  Subset
 from dataset import get_class_counts, filter_dataset, get_class_to_idx, split_dataset, PlanktonDataset, OOD_CLASSES
+from model import build_model
 
 DATA_DIR = Path("data/raw")
 
@@ -149,24 +147,13 @@ def mahalanobis_distance(features, class_means, covariance):
   return distance
 
 if __name__ == '__main__':
+  known_class_counts = get_class_counts(DATA_DIR)
+  known_classes = filter_dataset(known_class_counts)
+  known_class_to_idx = get_class_to_idx(known_classes)
   ood_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=ood_class_to_idx, transform=transform)
   ood_loader = DataLoader(ood_dataset, batch_size=32, shuffle=False, num_workers=4)
 
   print(f"Total OOD samples: {len(ood_dataset)}")
-
-  model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-  num_classes = 46
-  in_features = model.fc.in_features
-  model.fc = nn.Linear(in_features, num_classes)
-
-  state_dict = torch.load('models/resnet18_baseline.pt')
-  model.load_state_dict(state_dict)
-  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-  model = model.to(device)
-  model.eval()
-  known_class_counts = get_class_counts(DATA_DIR)
-  known_classes = filter_dataset(known_class_counts)
-  known_class_to_idx = get_class_to_idx(known_classes)
 
   known_dataset = PlanktonDataset(root_dir=DATA_DIR, class_to_idx=known_class_to_idx, transform=transform)
   known_train_indices, known_test_indices = split_dataset(known_dataset)
@@ -174,6 +161,16 @@ if __name__ == '__main__':
   known_train_loader = DataLoader(known_train_dataset, batch_size=32, shuffle=False, num_workers=4)
   known_test_dataset = Subset(known_dataset, known_test_indices)
   known_test_loader = DataLoader(known_test_dataset, batch_size=32, shuffle=False, num_workers=4)
+  
+  num_classes = len(known_class_to_idx)
+  model = build_model(num_classes)
+
+  state_dict = torch.load('models/resnet18_baseline.pt')
+  model.load_state_dict(state_dict)
+  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  model = model.to(device)
+  model.eval()
+
 
   train_features, train_labels = get_features(model, known_train_loader, device)
 
@@ -215,6 +212,26 @@ if __name__ == '__main__':
 
   print(f"OOD images correctly flagged as novel: {ood_flagged:.4f}")
   print(f"Known images wrongly flagged as novel (false positive rate): {known_flagged:.4f}")
+
+  results = {
+    "mahalanobis": {
+      "avg_known_distance": test_min_distances.mean().item(),
+      "avg_ood_distance": ood_min_distances.mean().item(),
+      "threshold": float(mahalanobis_threshold),
+      "ood_detection_rate": mahalanobis_ood_flagged,
+      "false_positive_rate": mahalanobis_known_flagged,
+    },
+    "msp": {
+      "avg_known_confidence": sum(known_confidences) / len(known_confidences),
+      "avg_ood_confidence": sum(ood_confidences) / len(ood_confidences),
+      "threshold": float(msp_threshold),
+      "ood_detection_rate": ood_flagged,
+      "false_positive_rate": known_flagged,
+    },
+  }
+  Path('results').mkdir(exist_ok=True)
+  with open('results/ood_results.json', 'w') as f:
+    json.dump(results, f, indent=2)
   
 
 
