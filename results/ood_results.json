@@ -1,0 +1,16 @@
+{
+  "mahalanobis": {
+    "avg_known_distance": 22.244264602661133,
+    "avg_ood_distance": 28.479934692382812,
+    "threshold": 29.6013988494873,
+    "ood_detection_rate": 0.36363636363636365,
+    "false_positive_rate": 0.050016878586699676
+  },
+  "msp": {
+    "avg_known_confidence": 0.8126437063475113,
+    "avg_ood_confidence": 0.6358745103714247,
+    "threshold": 0.4214967280626297,
+    "ood_detection_rate": 0.22905027932960895,
+    "false_positive_rate": 0.050016878586699676
+  }
+}
