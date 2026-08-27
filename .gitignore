@@ -8,7 +8,6 @@ data/processed/*
 !data/processed/.gitkeep
 models/*.pt
 models/*.h5
-results/
 .ipynb_checkpoints/
 results/*
 !results/.gitkeep
