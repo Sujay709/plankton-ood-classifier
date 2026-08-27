@@ -6,7 +6,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import torchvision.transforms as transforms
-
+import numpy as np
+import random
 from dataset import get_class_counts, filter_dataset, get_class_to_idx, PlanktonDataset
 from model import build_model
 
@@ -17,7 +18,12 @@ transform = transforms.Compose([
   transforms.ToTensor(),
   transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
-
+SEED = 42
+torch.manual_seed(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 class_counts = get_class_counts(DATA_DIR)
 known_classes = filter_dataset(class_counts)
 class_to_idx = get_class_to_idx(known_classes)
