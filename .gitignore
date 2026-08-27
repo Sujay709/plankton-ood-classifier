@@ -12,3 +12,5 @@ results/
 .ipynb_checkpoints/
 results/*
 !results/.gitkeep
+!results/evaluate_results.json
+!results/ood_results.json
