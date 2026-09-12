@@ -13,6 +13,8 @@ WHOI-Plankton dataset (Sosik, Peacock, Brownlee 2015), IFCB imagery from the Mar
 - 2013 subset: hdl.handle.net/1912/7349
 - 2014 subset: hdl.handle.net/1912/7350
 
+The Datasets for 2013 and 2014 are not provided due to file sizes. To reproduce the experiments, download the 2013 and 2014 subsets from the given links above and place the image folders under `data/raw/`
+
 Images are grayscale, variable size and aspect ratio, converted to RGB via channel replication for compatibility with ImageNet-pretrained weights.
 
 ## Pipeline
@@ -35,7 +37,7 @@ Novel-species detection, both methods calibrated to a 5% false positive rate on 
 | MSP | 22.35% |
 | Mahalanobis | 35.70% |
 
-Mahalanobis distance catches over 1.5x as many novel species as MSP at the same false alarm rate, consistent with MSP being a known weak baseline in the OOD detection literature.
+Mahalanobis distance catches over 1.5x as many novel species as MSP at the same false alarm rate.
 
 ## Repo structure
 
