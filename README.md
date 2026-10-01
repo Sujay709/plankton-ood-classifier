@@ -10,8 +10,8 @@ Plankton imaging systems like IFCB collect far more organisms than any fixed lab
 
 WHOI-Plankton dataset (Sosik, Peacock, Brownlee 2015), IFCB imagery from the Martha's Vineyard Coastal Observatory.
 
-- 2013 subset: hdl.handle.net/1912/7349
-- 2014 subset: hdl.handle.net/1912/7350
+- 2013 subset: https://darchive.mblwhoilibrary.org/handle/1912/7349
+- 2014 subset: https://darchive.mblwhoilibrary.org/entities/publication/48f7a9a7-23f5-5584-a7de-6a5a64d01a37
 
 The Datasets for 2013 and 2014 are not provided due to file sizes. To reproduce the experiments, download the 2013 and 2014 subsets from the given links above and place the image folders under `data/raw/`
 
